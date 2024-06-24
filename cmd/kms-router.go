@@ -39,6 +39,9 @@ func registerKMSRouter(router *mux.Router) {
 	kmsAPI := kmsAPIHandlers{}
 	kmsRouter := router.PathPrefix(kmsPathPrefix).Subrouter()
 
+	// TODO: corsHandler was previously applied globally to entire server, check if we actually need cors here.
+	kmsRouter.Use(corsGlobalHandler)
+
 	KMSVersions := []string{
 		kmsAPIVersionPrefix,
 	}

@@ -37,6 +37,7 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/minio/minio-go/v7/pkg/set"
 	xhttp "github.com/minio/minio/internal/http"
+	xcors "github.com/minio/pkg/v3/cors"
 	"github.com/minio/pkg/v3/policy"
 )
 
@@ -82,6 +83,7 @@ func runAllTests(suite *TestSuiteCommon, c *check) {
 	suite.TestCors(c)
 	suite.TestObjectDir(c)
 	suite.TestBucketPolicy(c)
+	suite.TestBucketCors(c)
 	suite.TestDeleteBucket(c)
 	suite.TestDeleteBucketNotEmpty(c)
 	suite.TestDeleteMultipleObjects(c)
@@ -411,6 +413,61 @@ func (s *TestSuiteCommon) TestBucketPolicy(c *check) {
 		0, nil, s.accessKey, s.secretKey, s.signer)
 	c.Assert(err, nil)
 
+	response, err = s.client.Do(request)
+	c.Assert(err, nil)
+	c.Assert(response.StatusCode, http.StatusNotFound)
+}
+
+// TestBucketCors sets a bucket cors configuration, verifies it by fetching it, then deletes and verifies the deletion.
+func (s *TestSuiteCommon) TestBucketCors(c *check) {
+	bucketCorsStr := `<?xml version="1.0" encoding="UTF-8"?><CORSConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><CORSRule><AllowedOrigin>http://www.example.com</AllowedOrigin><AllowedMethod>PUT</AllowedMethod><AllowedHeader>*</AllowedHeader></CORSRule></CORSConfiguration>`
+	bucketName := getRandomBucketName()
+
+	// HTTP request to create the random bucket.
+	request, err := newTestSignedRequest(http.MethodPut, getMakeBucketURL(s.endPoint, bucketName),
+		0, nil, s.accessKey, s.secretKey, s.signer)
+	c.Assert(err, nil)
+	response, err := s.client.Do(request)
+	c.Assert(err, nil)
+	c.Assert(response.StatusCode, http.StatusOK)
+
+	// Put a new bucket cors config.
+	request, err = newTestSignedRequest(http.MethodPut, getBucketCorsURL(s.endPoint, bucketName),
+		int64(len(bucketCorsStr)), bytes.NewReader([]byte(bucketCorsStr)), s.accessKey, s.secretKey, s.signer)
+	c.Assert(err, nil)
+	response, err = s.client.Do(request)
+	c.Assert(err, nil)
+	c.Assert(response.StatusCode, http.StatusOK)
+
+	// Fetch the uploaded cors config.
+	request, err = newTestSignedRequest(http.MethodGet, getBucketCorsURL(s.endPoint, bucketName), 0, nil,
+		s.accessKey, s.secretKey, s.signer)
+	c.Assert(err, nil)
+	response, err = s.client.Do(request)
+	c.Assert(err, nil)
+	c.Assert(response.StatusCode, http.StatusOK)
+	respCors, err := io.ReadAll(response.Body)
+	c.Assert(err, nil)
+
+	// Verify if downloaded cors config matches with previously uploaded.
+	wantConf, err := xcors.ParseBucketCorsConfig(strings.NewReader(bucketCorsStr))
+	c.Assert(err, nil)
+	gotConf, err := xcors.ParseBucketCorsConfig(bytes.NewReader(respCors))
+	c.Assert(err, nil)
+	c.Assert(reflect.DeepEqual(wantConf, gotConf), true)
+
+	// Delete cors config.
+	request, err = newTestSignedRequest(http.MethodDelete, getBucketCorsURL(s.endPoint, bucketName), 0, nil,
+		s.accessKey, s.secretKey, s.signer)
+	c.Assert(err, nil)
+	response, err = s.client.Do(request)
+	c.Assert(err, nil)
+	c.Assert(response.StatusCode, http.StatusNoContent)
+
+	// Verify if the cors config was indeed deleted.
+	request, err = newTestSignedRequest(http.MethodGet, getBucketCorsURL(s.endPoint, bucketName),
+		0, nil, s.accessKey, s.secretKey, s.signer)
+	c.Assert(err, nil)
 	response, err = s.client.Do(request)
 	c.Assert(err, nil)
 	c.Assert(response.StatusCode, http.StatusNotFound)

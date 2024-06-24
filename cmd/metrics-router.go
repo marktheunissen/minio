@@ -54,6 +54,9 @@ func registerMetricsRouter(router *mux.Router) {
 	metricsRouter := router.NewRoute().PathPrefix(minioReservedBucketPath).Subrouter()
 	authType := prometheusAuthType(strings.ToLower(env.Get(EnvPrometheusAuthType, string(prometheusJWT))))
 
+	// TODO: corsHandler was previously applied globally to entire server, check if we actually need cors here.
+	metricsRouter.Use(corsGlobalHandler)
+
 	auth := AuthMiddleware
 	if authType == prometheusPublic {
 		auth = NoAuthMiddleware

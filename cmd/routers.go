@@ -38,6 +38,8 @@ func registerDistErasureRouters(router *mux.Router, endpointServerPools Endpoint
 	// Register distributed namespace lock routers.
 	registerLockRESTHandlers()
 
+	// TODO: We probably don't need CORS middleware on this API, however it was previously applied globally. Check if we can remove.
+
 	// Add grid to router
 	router.Handle(grid.RoutePath, adminMiddleware(globalGrid.Load().Handler(), noGZFlag, noObjLayerFlag))
 }

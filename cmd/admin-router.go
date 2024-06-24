@@ -144,6 +144,9 @@ func registerAdminRouter(router *mux.Router, enableConfigOps bool) {
 		adminAPIVersionPrefix,
 	}
 
+	// TODO: corsHandler was previously applied globally to entire server, check if we actually need cors here.
+	adminRouter.Use(corsGlobalHandler)
+
 	for _, adminVersion := range adminVersions {
 		// Restart and stop MinIO service type=2
 		adminRouter.Methods(http.MethodPost).Path(adminVersion+"/service").HandlerFunc(adminMiddleware(adminAPI.ServiceV2Handler, traceAllFlag)).Queries("action", "{action:.*}", "type", "2")

@@ -139,6 +139,9 @@ func registerSTSRouter(router *mux.Router) {
 	// STS Router
 	stsRouter := router.NewRoute().PathPrefix(SlashSeparator).Subrouter()
 
+	// TODO: corsHandler was previously applied globally to entire server, check if we actually need cors here.
+	stsRouter.Use(corsGlobalHandler)
+
 	// Assume roles with no JWT, handles AssumeRole.
 	stsRouter.Methods(http.MethodPost).MatcherFunc(func(r *http.Request, rm *mux.RouteMatch) bool {
 		ctypeOk := wildcard.MatchSimple("application/x-www-form-urlencoded*", r.Header.Get(xhttp.ContentType))

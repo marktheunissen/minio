@@ -23,9 +23,8 @@ import (
 
 	consoleapi "github.com/minio/console/api"
 	xhttp "github.com/minio/minio/internal/http"
+	"github.com/minio/minio/internal/logger"
 	"github.com/minio/mux"
-	"github.com/minio/pkg/v3/wildcard"
-	"github.com/rs/cors"
 )
 
 func newHTTPServerFn() *xhttp.Server {
@@ -110,11 +109,6 @@ var rejectedBucketAPIs = []rejectedAPI{
 		api:     "inventory",
 		methods: []string{http.MethodGet, http.MethodPut, http.MethodDelete},
 		queries: []string{"inventory", ""},
-	},
-	{
-		api:     "cors",
-		methods: []string{http.MethodPut, http.MethodDelete},
-		queries: []string{"cors", ""},
 	},
 	{
 		api:     "metrics",
@@ -259,6 +253,8 @@ func registerAPIRouter(router *mux.Router) {
 	// API Router
 	apiRouter := router.PathPrefix(SlashSeparator).Subrouter()
 
+	logger.Info("hello registerAPIRouter")
+
 	var routers []*mux.Router
 	for _, domainName := range globalDomainNames {
 		if IsKubernetes() {
@@ -287,6 +283,10 @@ func registerAPIRouter(router *mux.Router) {
 	routers = append(routers, apiRouter.PathPrefix("/{bucket}").Subrouter())
 
 	for _, router := range routers {
+		// Apply CORS middleware to all sub routers.
+		// TODO: Why is router.Use() not more common, is there perhaps a reason like performance hit?
+		router.Use(corsHandler)
+
 		// Register all rejected object APIs
 		for _, r := range rejectedObjAPIs {
 			t := router.Methods(r.methods...).
@@ -410,6 +410,10 @@ func registerAPIRouter(router *mux.Router) {
 		router.Methods(http.MethodGet).
 			HandlerFunc(s3APIMiddleware(api.GetBucketPolicyHandler)).
 			Queries("policy", "")
+		// GetBucketCors
+		router.Methods(http.MethodGet).
+			HandlerFunc(s3APIMiddleware(api.GetBucketCorsHandler)).
+			Queries("cors", "")
 		// GetBucketLifecycle
 		router.Methods(http.MethodGet).
 			HandlerFunc(s3APIMiddleware(api.GetBucketLifecycleHandler)).
@@ -526,6 +530,10 @@ func registerAPIRouter(router *mux.Router) {
 		router.Methods(http.MethodPut).
 			HandlerFunc(s3APIMiddleware(api.PutBucketPolicyHandler)).
 			Queries("policy", "")
+		// PutBucketCors
+		router.Methods(http.MethodPut).
+			HandlerFunc(s3APIMiddleware(api.PutBucketCorsHandler)).
+			Queries("cors", "")
 
 		// PutBucketObjectLockConfig
 		router.Methods(http.MethodPut).
@@ -568,6 +576,11 @@ func registerAPIRouter(router *mux.Router) {
 		router.Methods(http.MethodDelete).
 			HandlerFunc(s3APIMiddleware(api.DeleteBucketPolicyHandler)).
 			Queries("policy", "")
+		// DeleteBucketCors
+		router.Methods(http.MethodDelete).
+			HandlerFunc(s3APIMiddleware(api.DeleteBucketCorsHandler)).
+			Queries("cors", "")
+
 		// DeleteBucketReplication
 		router.Methods(http.MethodDelete).
 			HandlerFunc(s3APIMiddleware(api.DeleteBucketReplicationConfigHandler)).
@@ -630,52 +643,4 @@ func registerAPIRouter(router *mux.Router) {
 	// If none of the routes match add default error handler routes
 	apiRouter.NotFoundHandler = collectAPIStats("notfound", httpTraceAll(errorResponseHandler))
 	apiRouter.MethodNotAllowedHandler = collectAPIStats("methodnotallowed", httpTraceAll(methodNotAllowedHandler("S3")))
-}
-
-// corsHandler handler for CORS (Cross Origin Resource Sharing)
-func corsHandler(handler http.Handler) http.Handler {
-	commonS3Headers := []string{
-		xhttp.Date,
-		xhttp.ETag,
-		xhttp.ServerInfo,
-		xhttp.Connection,
-		xhttp.AcceptRanges,
-		xhttp.ContentRange,
-		xhttp.ContentEncoding,
-		xhttp.ContentLength,
-		xhttp.ContentType,
-		xhttp.ContentDisposition,
-		xhttp.LastModified,
-		xhttp.ContentLanguage,
-		xhttp.CacheControl,
-		xhttp.RetryAfter,
-		xhttp.AmzBucketRegion,
-		xhttp.Expires,
-		"X-Amz*",
-		"x-amz*",
-		"*",
-	}
-	opts := cors.Options{
-		AllowOriginFunc: func(origin string) bool {
-			for _, allowedOrigin := range globalAPIConfig.getCorsAllowOrigins() {
-				if wildcard.MatchSimple(allowedOrigin, origin) {
-					return true
-				}
-			}
-			return false
-		},
-		AllowedMethods: []string{
-			http.MethodGet,
-			http.MethodPut,
-			http.MethodHead,
-			http.MethodPost,
-			http.MethodDelete,
-			http.MethodOptions,
-			http.MethodPatch,
-		},
-		AllowedHeaders:   commonS3Headers,
-		ExposedHeaders:   commonS3Headers,
-		AllowCredentials: true,
-	}
-	return cors.New(opts).Handler(handler)
 }

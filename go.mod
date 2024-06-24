@@ -43,6 +43,7 @@ require (
 	github.com/klauspost/reedsolomon v1.12.1
 	github.com/lib/pq v1.10.9
 	github.com/lithammer/shortuuid/v4 v4.0.0
+	github.com/mattn/go-colorable v0.1.13
 	github.com/miekg/dns v1.1.59
 	github.com/minio/cli v1.24.2
 	github.com/minio/console v1.6.1
@@ -82,6 +83,7 @@ require (
 	github.com/rs/cors v1.11.0
 	github.com/secure-io/sio-go v0.3.1
 	github.com/shirou/gopsutil/v3 v3.24.5
+	github.com/stretchr/testify v1.9.0
 	github.com/tidwall/gjson v1.17.1
 	github.com/tinylib/msgp v1.1.9
 	github.com/valyala/bytebufferpool v1.0.0
@@ -196,7 +198,6 @@ require (
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20240513124658-fba389f38bae // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
-	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-ieproxy v0.0.12 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect
@@ -223,6 +224,7 @@ require (
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/pierrec/lz4/v4 v4.1.21 // indirect
+	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/posener/complete v1.2.3 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/prometheus/prom2json v1.3.3 // indirect
@@ -260,3 +262,7 @@ require (
 	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 )
+
+replace github.com/minio/pkg/v3 => /Users/mark/src/pkg
+
+replace github.com/minio/madmin-go/v3 => /Users/mark/src/madmin-go

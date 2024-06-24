@@ -37,6 +37,9 @@ func registerHealthCheckRouter(router *mux.Router) {
 	// Healthcheck router
 	healthRouter := router.PathPrefix(healthCheckPathPrefix).Subrouter()
 
+	// TODO: corsHandler was previously applied globally to entire server, check if we actually need cors here.
+	healthRouter.Use(corsGlobalHandler)
+
 	// Cluster check handler to verify cluster is active
 	healthRouter.Methods(http.MethodGet).Path(healthCheckClusterPath).HandlerFunc(httpTraceAll(ClusterCheckHandler))
 	healthRouter.Methods(http.MethodHead).Path(healthCheckClusterPath).HandlerFunc(httpTraceAll(ClusterCheckHandler))

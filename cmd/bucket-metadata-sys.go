@@ -37,6 +37,7 @@ import (
 	"github.com/minio/minio/internal/event"
 	"github.com/minio/minio/internal/kms"
 	"github.com/minio/minio/internal/logger"
+	xcors "github.com/minio/pkg/v3/cors"
 	"github.com/minio/pkg/v3/policy"
 	"github.com/minio/pkg/v3/sync/errgroup"
 	"golang.org/x/sync/singleflight"
@@ -153,6 +154,9 @@ func (sys *BucketMetadataSys) updateAndParse(ctx context.Context, bucket string,
 		if err != nil {
 			return updatedAt, fmt.Errorf("Error encrypting bucket target metadata %w", err)
 		}
+	case bucketCorsConfig:
+		meta.CorsConfigXML = configData
+		meta.CorsConfigUpdatedAt = updatedAt
 	default:
 		return updatedAt, fmt.Errorf("Unknown bucket %s metadata update requested %s", bucket, configFile)
 	}
@@ -315,6 +319,22 @@ func (sys *BucketMetadataSys) GetLifecycleConfig(bucket string) (*lifecycle.Life
 	return meta.lifecycleConfig, meta.LifecycleConfigUpdatedAt, nil
 }
 
+// GetCorsConfig returns configured CORS config
+// The returned object may not be modified.
+func (sys *BucketMetadataSys) GetCorsConfig(bucket string) (*xcors.Config, time.Time, error) {
+	meta, _, err := sys.GetConfig(GlobalContext, bucket)
+	if err != nil {
+		if errors.Is(err, errConfigNotFound) {
+			return nil, time.Time{}, BucketCorsNotFound{Bucket: bucket}
+		}
+		return nil, time.Time{}, err
+	}
+	if meta.corsConfig == nil || len(meta.corsConfig.CORSRules) == 0 {
+		return nil, time.Time{}, BucketCorsNotFound{Bucket: bucket}
+	}
+	return meta.corsConfig, meta.CorsConfigUpdatedAt, nil
+}
+
 // GetNotificationConfig returns configured notification config
 // The returned object may not be modified.
 func (sys *BucketMetadataSys) GetNotificationConfig(bucket string) (*event.Config, error) {
@@ -468,6 +488,7 @@ func (sys *BucketMetadataSys) GetConfig(ctx context.Context, bucket string) (met
 	if err != nil {
 		return meta, false, err
 	}
+
 	sys.Lock()
 	sys.metadataMap[bucket] = meta
 	sys.Unlock()

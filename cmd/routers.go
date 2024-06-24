@@ -38,6 +38,8 @@ func registerDistErasureRouters(router *mux.Router, endpointServerPools Endpoint
 	// Register distributed namespace lock routers.
 	registerLockRESTHandlers()
 
+	// TODO: We probably don't need OPTIONS preflight matching on this router, but just check.
+
 	// Add grid to router
 	router.Handle(grid.RoutePath, adminMiddleware(globalGrid.Load().Handler(storageServerRequestValidate), noGZFlag, noObjLayerFlag))
 }
@@ -69,6 +71,8 @@ var globalMiddlewares = []mux.MiddlewareFunc{
 	setUploadForwardingMiddleware,
 	// Add bucket forwarding middleware
 	setBucketForwardingMiddleware,
+	// CORS middleware
+	corsHandler,
 	// Add new middlewares here.
 }
 

@@ -384,6 +384,13 @@ func (e BucketPolicyNotFound) Error() string {
 	return "No bucket policy configuration found for bucket: " + e.Bucket
 }
 
+// BucketCorsNotFound - no bucket CORS found.
+type BucketCorsNotFound GenericError
+
+func (e BucketCorsNotFound) Error() string {
+	return "No bucket CORS configuration found for bucket : " + e.Bucket
+}
+
 // BucketLifecycleNotFound - no bucket lifecycle found.
 type BucketLifecycleNotFound GenericError
 

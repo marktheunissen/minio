@@ -421,6 +421,7 @@ func (a adminAPIHandlers) ExportBucketMetadataHandler(w http.ResponseWriter, r *
 		bucketVersioningConfig,
 		bucketReplicationConfig,
 		bucketTargetsFile,
+		bucketCorsConfig, // TODO: implement ExportBucketMetadataHandler functionality for CORS bucket config
 	}
 	for _, bi := range buckets {
 		for _, cfgFile := range cfgFiles {
@@ -596,6 +597,8 @@ func (i *importMetaReport) SetStatus(bucket, fname string, err error) {
 		st.ObjectLock = madmin.MetaStatus{IsSet: true, Err: errMsg}
 	case bucketVersioningConfig:
 		st.Versioning = madmin.MetaStatus{IsSet: true, Err: errMsg}
+	case bucketCorsConfig:
+		st.Cors = madmin.MetaStatus{IsSet: true, Err: errMsg}
 	default:
 		st.Err = errMsg
 	}
@@ -933,6 +936,9 @@ func (a adminAPIHandlers) ImportBucketMetadataHandler(w http.ResponseWriter, r *
 			bucketMap[bucket].QuotaConfigJSON = data
 			bucketMap[bucket].QuotaConfigUpdatedAt = updatedAt
 			rpt.SetStatus(bucket, fileName, nil)
+
+		case bucketCorsConfig:
+			// TODO: implement CORS import, test all this
 		}
 	}
 

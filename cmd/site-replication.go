@@ -45,6 +45,7 @@ import (
 	"github.com/minio/minio/internal/bucket/lifecycle"
 	sreplication "github.com/minio/minio/internal/bucket/replication"
 	"github.com/minio/minio/internal/logger"
+	xcors "github.com/minio/pkg/v3/cors"
 	xldap "github.com/minio/pkg/v3/ldap"
 	"github.com/minio/pkg/v3/policy"
 	"github.com/puzpuzpuz/xsync/v3"
@@ -1665,6 +1666,37 @@ func (c *SiteReplicationSys) PeerBucketPolicyHandler(ctx context.Context, bucket
 
 	// Delete the bucket policy
 	_, err := globalBucketMetadataSys.Delete(ctx, bucket, bucketPolicyConfig)
+	if err != nil {
+		return wrapSRErr(err)
+	}
+
+	return nil
+}
+
+// PeerBucketCorsHandler - copies/deletes CORS to local cluster.
+func (c *SiteReplicationSys) PeerBucketCorsHandler(ctx context.Context, bucket string, bucketCors *xcors.Config, updatedAt time.Time) error {
+	// skip overwrite if local update is newer than peer update.
+	if !updatedAt.IsZero() {
+		if _, updateTm, err := globalBucketMetadataSys.GetCorsConfig(bucket); err == nil && updateTm.After(updatedAt) {
+			return nil
+		}
+	}
+
+	if bucketCors != nil {
+		configData, err := bucketCors.ToXML()
+		if err != nil {
+			return wrapSRErr(err)
+		}
+
+		_, err = globalBucketMetadataSys.Update(ctx, bucket, bucketCorsConfig, configData)
+		if err != nil {
+			return wrapSRErr(err)
+		}
+		return nil
+	}
+
+	// Delete the bucket CORS config
+	_, err := globalBucketMetadataSys.Delete(ctx, bucket, bucketCorsConfig)
 	if err != nil {
 		return wrapSRErr(err)
 	}
@@ -4473,6 +4505,7 @@ func (c *SiteReplicationSys) healBuckets(ctx context.Context, objAPI ObjectLayer
 			c.healOLockConfigMetadata(ctx, objAPI, bucket, info)
 			c.healSSEMetadata(ctx, objAPI, bucket, info)
 			c.healBucketReplicationConfig(ctx, objAPI, bucket, info)
+			// TODO: Heal Bucket CORS
 			c.healBucketPolicies(ctx, objAPI, bucket, info)
 			c.healTagMetadata(ctx, objAPI, bucket, info)
 			c.healBucketQuotaConfig(ctx, objAPI, bucket, info)
